@@ -49,35 +49,7 @@ function MultiChoiceQuestion({
               {selected && <CheckCircle2 className="w-4 h-4 text-indigo-500 flex-shrink-0" />}
             </div>
 
-            {/* Score breakdown strip (shown when selected) */}
-            <AnimatePresence>
-              {selected && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="px-4 pb-3 flex flex-wrap gap-2">
-                    {options.map(opt => {
-                      const score = choice.optionScores[opt.id] ?? 0;
-                      return (
-                        <div key={opt.id} className="flex items-center gap-1 px-2.5 py-1 rounded-lg"
-                          style={{ background: opt.color + '18' }}>
-                          <span style={{ fontSize: '10px', fontWeight: 600, color: opt.color }}>
-                            {opt.name.split(' ')[0]}
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded text-white"
-                            style={{ background: opt.color, fontSize: '10px', fontWeight: 700 }}>
-                            +{score}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+
           </motion.button>
         );
       })}
@@ -99,9 +71,9 @@ function SliderQuestion({
   const [localValue, setLocalValue] = useState<number>(currentValue ?? 5);
   const [hasInteracted, setHasInteracted] = useState(currentValue !== null);
 
-  const leftOpt  = mapping ? options.find(o => o.id === mapping.leftOptionId)  : null;
+  const leftOpt = mapping ? options.find(o => o.id === mapping.leftOptionId) : null;
   const rightOpt = mapping ? options.find(o => o.id === mapping.rightOptionId) : null;
-  const leftColor  = leftOpt?.color  ?? '#6366F1';
+  const leftColor = leftOpt?.color ?? '#6366F1';
   const rightColor = rightOpt?.color ?? '#F59E0B';
 
   const handleChange = useCallback((vals: number[]) => {
@@ -217,10 +189,10 @@ export function UserAnswerScreen() {
   const [expandedCat, setExpandedCat] = useState<string | null>(questionnaire.categories[0]?.id ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const totalQ    = getTotalQuestions(questionnaire);
-  const answered  = getTotalAnswered(questionnaire, userSession);
-  const allDone   = answered === totalQ && totalQ > 0;
-  const progress  = totalQ > 0 ? answered / totalQ : 0;
+  const totalQ = getTotalQuestions(questionnaire);
+  const answered = getTotalAnswered(questionnaire, userSession);
+  const allDone = answered === totalQ && totalQ > 0;
+  const progress = totalQ > 0 ? answered / totalQ : 0;
 
   const handleMCAnswer = useCallback((questionId: string, choiceId: string) => {
     setAnswer({ questionId, value: choiceId });
@@ -299,7 +271,7 @@ export function UserAnswerScreen() {
             userSession.answers.some(a => a.questionId === q.id)
           ).length;
           const catDone = catAnswered === category.questions.length && category.questions.length > 0;
-          const isOpen  = expandedCat === category.id;
+          const isOpen = expandedCat === category.id;
           const catWeight = userSession.weights.find(w => w.categoryId === category.id)?.weight ?? 0;
 
           return (
