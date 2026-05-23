@@ -68,7 +68,7 @@ export function HomeScreen() {
           </div>
           <div className="px-5 py-3 bg-indigo-50 flex items-center justify-between">
             <span className="text-indigo-500" style={{ fontSize: '12px', fontWeight: 600 }}>
-              ✨ Load demo: Best Smartphone 2024
+              Election Bulletin for the 16th Presidential and Vice Presidential Election
             </span>
             <ChevronRight className="w-3.5 h-3.5 text-indigo-400" />
           </div>
