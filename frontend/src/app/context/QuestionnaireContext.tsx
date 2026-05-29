@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { getDecision, createDecision } from '../api';
+import { getDecision } from '../api';
 
 export type QuestionType = 'multiple_choice' | 'slider';
 export type AppMode = 'home' | 'creator' | 'user';
@@ -699,7 +699,7 @@ export function QuestionnaireProvider({ children }: { children: ReactNode }) {
   const setDefaultWeights = useCallback((ws: UserWeight[]) =>
     setQuestionnaire(prev => ({ ...prev, defaultWeights: ws })), []);
 
-  const startUserFlow = useCallback(async (withDemo = false) => {
+  const startUserFlow = useCallback((withDemo = false) => {
     const q = withDemo ? DEMO : questionnaire;
     if (withDemo) setQuestionnaire(DEMO);
     // Use creator's suggested weights if available, else equal
@@ -708,17 +708,10 @@ export function QuestionnaireProvider({ children }: { children: ReactNode }) {
       q.defaultWeights.length > 0 &&
       q.categories.every(c => q.defaultWeights.some(w => w.categoryId === c.id));
     const weights: UserWeight[] = hasDefaults ? q.defaultWeights : equalWeights(q.categories);
-    setUserSession({ weights, weightMode: 'pie', answers: [] });
+    const answers: Answer[] = withDemo ? DEMO_ANSWERS : [];
+    setUserSession({ weights, weightMode: 'pie', answers });
     setUserStep(withDemo ? 1 : 0);
     setMode('user');
-    // Always save questionnaire to backend so scoring runs in Python
-    try {
-      const id = await createDecision(q);
-      setDecisionId(id);
-    } catch (err) {
-      console.error('Failed to register decision with backend:', err);
-      // Continue in offline mode — scoring will fall back to frontend
-    }
   }, [questionnaire]);
 
   const goEditWeights = useCallback(() => {

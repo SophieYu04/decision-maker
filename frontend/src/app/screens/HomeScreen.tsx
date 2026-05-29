@@ -1,10 +1,30 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { PenLine, Play, ChevronRight, Scale } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { PenLine, Play, ChevronRight, Scale, Link } from 'lucide-react';
 import { useQuestionnaire } from '../context/QuestionnaireContext';
 
 export function HomeScreen() {
-  const { setMode, startUserFlow, setCreatorStep } = useQuestionnaire();
+  const { setMode, startUserFlow, setCreatorStep, loadDecision } = useQuestionnaire();
+
+  const [showIdInput, setShowIdInput] = useState(false);
+  const [idInput, setIdInput] = useState('');
+  const [idError, setIdError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLoadById = async () => {
+    const id = parseInt(idInput.trim());
+    if (isNaN(id)) { setIdError('Please enter a valid number'); return; }
+    setIsLoading(true);
+    setIdError('');
+    try {
+      await loadDecision(id);
+      await startUserFlow(false);
+    } catch {
+      setIdError('Questionnaire not found. Check the ID and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-full bg-white">
@@ -68,14 +88,65 @@ export function HomeScreen() {
           </div>
           <div className="px-5 py-3 bg-indigo-50 flex items-center justify-between">
             <span className="text-indigo-500" style={{ fontSize: '12px', fontWeight: 600 }}>
-<<<<<<< HEAD
-              Election Bulletin for the 16th Presidential and Vice Presidential Election
-=======
-              Election 2024
->>>>>>> 3cc51df (add backend scoring logic and database setup)
+              總統選舉公報2024
             </span>
             <ChevronRight className="w-3.5 h-3.5 text-indigo-400" />
           </div>
+        </motion.div>
+
+        {/* Fill by ID card */}
+        <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.45 }}
+          className="rounded-3xl overflow-hidden border border-indigo-100 shadow-sm cursor-pointer"
+          onClick={() => { setShowIdInput(p => !p); setIdError(''); }}
+          whileTap={{ scale: 0.98 }}>
+          <div className="p-5 bg-white">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
+                    <Link className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <span className="text-indigo-400" style={{ fontSize: '11px', fontWeight: 600 }}>SHARED LINK</span>
+                </div>
+                <h2 style={{ fontWeight: 700, fontSize: '19px', color: '#1E1B4B' }}>
+                  Fill a shared questionnaire
+                </h2>
+                <p className="text-gray-400 mt-1" style={{ fontSize: '12px' }}>Enter a questionnaire ID</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-300 flex-shrink-0 mt-1" />
+            </div>
+          </div>
+          <AnimatePresence>
+            {showIdInput && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden">
+                <div className="px-5 pb-5 space-y-3" onClick={e => e.stopPropagation()}>
+                  <input
+                    type="number"
+                    value={idInput}
+                    onChange={e => { setIdInput(e.target.value); setIdError(''); }}
+                    placeholder="e.g. 42"
+                    className="w-full px-4 py-3 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-indigo-200 focus:bg-white outline-none"
+                    style={{ fontSize: '15px', color: '#1E1B4B' }}
+                    onKeyDown={e => e.key === 'Enter' && handleLoadById()}
+                  />
+                  {idError && <p className="text-red-400" style={{ fontSize: '12px' }}>{idError}</p>}
+                  <button
+                    onClick={handleLoadById}
+                    disabled={isLoading || !idInput.trim()}
+                    className="w-full py-3 rounded-2xl text-white font-semibold"
+                    style={{
+                      background: (isLoading || !idInput.trim()) ? '#E5E7EB' : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                      color: (isLoading || !idInput.trim()) ? '#9CA3AF' : 'white',
+                      fontSize: '14px',
+                    }}>
+                    {isLoading ? 'Loading...' : 'Start →'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Creator card */}
