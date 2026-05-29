@@ -4,7 +4,6 @@ import { ArrowLeft, CheckCircle2, SlidersHorizontal, ChevronRight } from 'lucide
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import {
   useQuestionnaire,
-  getSliderScores,
   getTotalAnswered,
   getTotalQuestions,
   Question,
@@ -83,22 +82,18 @@ function SliderQuestion({
     onValueChange(v);
   }, [onValueChange]);
 
-  const scores = mapping ? getSliderScores(mapping, localValue) : {};
-
   if (!mapping) return null;
 
   return (
     <div className="space-y-4">
       {/* Endpoint labels */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: leftColor }} />
-          <span style={{ fontSize: '11px', fontWeight: 600, color: leftColor }}>{mapping.leftLabel}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span style={{ fontSize: '11px', fontWeight: 600, color: rightColor }}>{mapping.rightLabel}</span>
-          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: rightColor }} />
-        </div>
+      <div className="flex gap-3 justify-between">
+        <span style={{ fontSize: '11px', fontWeight: 600, color: leftColor, flex: 1 }}>
+          ← {mapping.leftLabel}
+        </span>
+        <span style={{ fontSize: '11px', fontWeight: 600, color: rightColor, flex: 1, textAlign: 'right' }}>
+          {mapping.rightLabel} →
+        </span>
       </div>
 
       {/* Gradient track + Radix slider */}
@@ -131,54 +126,19 @@ function SliderQuestion({
         </div>
       </div>
 
-      {/* Live score display */}
-      <AnimatePresence mode="wait">
-        {hasInteracted ? (
-          <motion.div
-            key="scores"
-            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="rounded-xl p-3"
-            style={{ background: 'linear-gradient(90deg, ' + leftColor + '10, ' + rightColor + '10)' }}>
-            <p className="text-gray-400 mb-2" style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-              Position {localValue.toFixed(1)} → Score impact
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {options.map(opt => {
-                const s = scores[opt.id] ?? 0;
-                const barWidth = (s / 10) * 100;
-                return (
-                  <div key={opt.id} className="flex-1 min-w-[90px]">
-                    <div className="flex items-center justify-between mb-1">
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: opt.color }}>
-                        {opt.name.split(' ')[0]}
-                      </span>
-                      <span style={{ fontSize: '12px', fontWeight: 800, color: opt.color }}>
-                        {s.toFixed(1)}/10
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full"
-                        animate={{ width: `${barWidth}%` }}
-                        transition={{ duration: 0.2 }}
-                        style={{ background: opt.color }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="prompt"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="text-center py-3 rounded-xl bg-gray-50">
-            <SlidersHorizontal className="w-4 h-4 text-gray-300 mx-auto mb-1" />
-            <p className="text-gray-400" style={{ fontSize: '12px' }}>Drag the slider to answer</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Answered confirmation — no scores shown */}
+      {hasInteracted ? (
+        <div className="text-center py-2 rounded-xl bg-gray-50">
+          <p className="text-gray-400" style={{ fontSize: '12px' }}>
+            ✓ Answered — position {localValue.toFixed(1)}
+          </p>
+        </div>
+      ) : (
+        <div className="text-center py-3 rounded-xl bg-gray-50">
+          <SlidersHorizontal className="w-4 h-4 text-gray-300 mx-auto mb-1" />
+          <p className="text-gray-400" style={{ fontSize: '12px' }}>Drag the slider to answer</p>
+        </div>
+      )}
     </div>
   );
 }
