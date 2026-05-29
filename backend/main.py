@@ -26,6 +26,13 @@ def startup():
     create_tables()
 
 
+@app.post("/admin/init-db")
+def init_db():
+    """Manually trigger table creation — call once if tables are missing."""
+    create_tables()
+    return {"status": "tables created"}
+
+
 # ─── POST /decisions ───────────────────────────────────────────────────────
 # Front end calls this when a creator publishes a questionnaire.
 # Saves the full Questionnaire JSON and returns a decision_id.
