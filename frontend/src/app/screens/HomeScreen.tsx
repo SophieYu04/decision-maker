@@ -68,7 +68,11 @@ export function HomeScreen() {
           </div>
           <div className="px-5 py-3 bg-indigo-50 flex items-center justify-between">
             <span className="text-indigo-500" style={{ fontSize: '12px', fontWeight: 600 }}>
+<<<<<<< HEAD
               Election Bulletin for the 16th Presidential and Vice Presidential Election
+=======
+              Election 2024
+>>>>>>> 3cc51df (add backend scoring logic and database setup)
             </span>
             <ChevronRight className="w-3.5 h-3.5 text-indigo-400" />
           </div>

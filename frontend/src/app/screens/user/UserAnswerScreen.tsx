@@ -8,7 +8,6 @@ import {
   getTotalQuestions,
   Question,
   Answer,
-  computeScores,
 } from '../../context/QuestionnaireContext';
 import { UserStepDots } from './UserWeightScreen';
 import { submitAnswers } from '../../api';
@@ -163,23 +162,20 @@ export function UserAnswerScreen() {
   }, [setAnswer]);
 
   const handleSubmit = async () => {
-    if (decisionId) {
-      setIsSubmitting(true);
-      try {
-        const res = await submitAnswers(decisionId, userSession.answers, userSession.weights);
-        setScoringResult(res.result);
-        nextUserStep();
-      } catch (err) {
-        console.error(err);
-        alert('Failed to calculate results on server.');
-      } finally {
-        setIsSubmitting(false);
-      }
-    } else {
-      // Demo mode fallback
-      const localResult = computeScores(questionnaire, userSession);
-      setScoringResult(localResult);
+    if (!decisionId) {
+      alert('Still connecting to server, please try again in a moment.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await submitAnswers(decisionId, userSession.answers, userSession.weights);
+      setScoringResult(res.result);
       nextUserStep();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to calculate results. Please check your connection.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
