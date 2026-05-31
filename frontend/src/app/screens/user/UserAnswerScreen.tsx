@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, SlidersHorizontal, ChevronRight } from 'lucide
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import {
   useQuestionnaire,
+  computeScores,
   getTotalAnswered,
   getTotalQuestions,
   Question,
@@ -162,20 +163,23 @@ export function UserAnswerScreen() {
   }, [setAnswer]);
 
   const handleSubmit = async () => {
-    if (!decisionId) {
-      alert('Still connecting to server, please try again in a moment.');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const res = await submitAnswers(decisionId, userSession.answers, userSession.weights);
-      setScoringResult(res.result);
+    if (decisionId) {
+      setIsSubmitting(true);
+      try {
+        const res = await submitAnswers(decisionId, userSession.answers, userSession.weights);
+        setScoringResult(res.result);
+        nextUserStep();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to calculate results. Please check your connection.');
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // Fallback: compute scores locally (demo mode or backend unavailable)
+      const localResult = computeScores(questionnaire, userSession);
+      setScoringResult(localResult);
       nextUserStep();
-    } catch (err) {
-      console.error(err);
-      alert('Failed to calculate results. Please check your connection.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
