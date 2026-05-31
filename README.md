@@ -8,12 +8,6 @@ A structured decision-making framework that helps people evaluate choices ration
 
 ---
 
-## Motivation
-
-People often make decisions — especially political ones — based on party identity rather than a careful evaluation of their actual preferences. DecideIQ provides a tool that quantifies personal preferences across policy dimensions and aligns them with decision outcomes.
-
----
-
 ## How It Works
 
 The app has two roles: **Creator** and **Respondent**.
@@ -59,35 +53,6 @@ decision-maker/
 ├── frontend/       # React + TypeScript SPA
 └── backend/        # Python FastAPI server
 ```
-
----
-
-## Getting Started
-
-### Backend
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Set the backend URL in your frontend environment config (e.g. `.env.local`):
-
-```
-VITE_API_URL=http://localhost:8000
-```
-
 ---
 
 ## Tech Stack
