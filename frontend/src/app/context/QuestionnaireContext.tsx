@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { getDecision, createDecision } from '../api';
+import { getDecision } from '../api';
 
 export type QuestionType = 'multiple_choice' | 'slider';
 export type AppMode = 'home' | 'creator' | 'user';
@@ -16,13 +16,10 @@ export interface Choice {
 
 /** Slider endpoints: linear interpolation between two options */
 export interface SliderMapping {
-  leftOptionId: string;    // option that scores 10 at value=1, 0 at value=10
-  rightOptionId: string;   // option that scores 0 at value=1, 10 at value=10
-  leftLabel: string;       // e.g. "Strongly favors iPhone"
-  rightLabel: string;      // e.g. "Strongly favors Galaxy"
-  // Optional third option that peaks in the middle (inverted-V curve)
-  middleOptionId?: string;
-  middleRange?: [number, number]; // e.g. [4, 6] — the value range where middle peaks
+  leftOptionId: string;   // option that scores 10 at value=1, 0 at value=10
+  rightOptionId: string;  // option that scores 0 at value=1, 10 at value=10
+  leftLabel: string;      // e.g. "Strongly favors iPhone"
+  rightLabel: string;     // e.g. "Strongly favors Galaxy"
 }
 
 export interface Question {
@@ -71,11 +68,7 @@ export const CAT_ICONS     = ['💼','💰','🏥','📈','⚖️','🎯','🌟'
 
 // ─── Scoring logic ─────────────────────────────────────────────────────────
 
-/** Linear interpolation: value 1→ left=10/right=0,  value 10→ left=0/right=10
- *  If middleOptionId + middleRange are set, the middle option scores with
- *  an inverted-V curve: peaks at 10 at the centre of middleRange, falls to 0
- *  at the slider extremes (value=1 or value=10).
- */
+/** Linear interpolation: value 1→ left=10/right=0,  value 10→ left=0/right=10 */
 export function getSliderScores(mapping: SliderMapping, value: number): Record<string, number> {
   const t = (value - 1) / 9;          // 0..1
   const leftScore  = parseFloat(((1 - t) * 10).toFixed(2));
@@ -84,14 +77,6 @@ export function getSliderScores(mapping: SliderMapping, value: number): Record<s
   result[mapping.leftOptionId]  = leftScore;
   if (mapping.rightOptionId !== mapping.leftOptionId) {
     result[mapping.rightOptionId] = rightScore;
-  }
-  if (mapping.middleOptionId && mapping.middleRange) {
-    const [lo, hi] = mapping.middleRange;   // e.g. [4, 6] on a 1–10 scale
-    const mid      = (lo + hi) / 2;
-    const maxDist  = Math.max(mid - 1, 10 - mid);
-    const dist     = Math.abs(value - mid);
-    const middleScore = parseFloat((Math.max(0, (1 - dist / maxDist) * 10)).toFixed(2));
-    result[mapping.middleOptionId] = middleScore;
   }
   return result;
 }
@@ -507,45 +492,6 @@ const DEMO: Questionnaire = {
             { id: 'q30_c', label: '民主與國際連結', optionScores: { dpp: 5 } },
           ],
         },
-        {
-          id: 'q34', categoryId: 'core_values',
-          text: '當外部環境不穩定時，你認為政府最應該優先保護什麼？',
-          type: 'slider', choices: [],
-          sliderMapping: {
-            leftOptionId:   'dpp',
-            rightOptionId:  'kmt',
-            leftLabel:  '優先降低長期風險，即使短期內部分產業、交流或成本會受到影響。',
-            rightLabel: '優先維持日常生活、產業活動與市場信心，避免讓社會承受過多變動。',
-            middleOptionId: 'tpp',
-            middleRange:    [4, 6] as [number, number],
-          },
-        },
-        {
-          id: 'q35', categoryId: 'core_values',
-          text: '面對重要公共決策時，你認為政府應該如何在「現實利益」與「長期原則」之間取捨？',
-          type: 'slider', choices: [],
-          sliderMapping: {
-            leftOptionId:   'tpp',
-            rightOptionId:  'dpp',
-            leftLabel:  '優先用成效、資料與可執行性判斷，不讓單一立場綁住政策選擇。',
-            rightLabel: '即使短期利益受影響，也應維持清楚的長期方向，並尋求理念相近者合作。',
-            middleOptionId: 'kmt',
-            middleRange:    [4, 6] as [number, number],
-          },
-        },
-        {
-          id: 'q36', categoryId: 'core_values',
-          text: '如果政府長期做事效率不佳，你認為最根本的問題通常在哪裡？',
-          type: 'slider', choices: [],
-          sliderMapping: {
-            leftOptionId:   'kmt',
-            rightOptionId:  'tpp',
-            leftLabel:  '問題多半來自執行不夠確實，應強化行政效率、資源分配與政策落實。',
-            rightLabel: '問題多半來自制度設計不良，應重新檢討規則、監督機制與權力配置。',
-            middleOptionId: 'dpp',
-            middleRange:    [4, 6] as [number, number],
-          },
-        },
       ],
     },
   ],
@@ -593,7 +539,7 @@ interface QCtx {
   setWeightMode: (m: WeightMode) => void;
   setAnswer: (a: Answer) => void;
   setDefaultWeights: (ws: UserWeight[]) => void;
-  startUserFlow: (withDemo?: boolean) => Promise<void>;
+  startUserFlow: (withDemo?: boolean) => void;
   goEditWeights: () => void;
   resetAll: () => void;
   decisionId: number | null;
@@ -699,7 +645,7 @@ export function QuestionnaireProvider({ children }: { children: ReactNode }) {
   const setDefaultWeights = useCallback((ws: UserWeight[]) =>
     setQuestionnaire(prev => ({ ...prev, defaultWeights: ws })), []);
 
-  const startUserFlow = useCallback(async (withDemo = false) => {
+  const startUserFlow = useCallback((withDemo = false) => {
     const q = withDemo ? DEMO : questionnaire;
     if (withDemo) setQuestionnaire(DEMO);
     // Use creator's suggested weights if available, else equal
@@ -708,17 +654,10 @@ export function QuestionnaireProvider({ children }: { children: ReactNode }) {
       q.defaultWeights.length > 0 &&
       q.categories.every(c => q.defaultWeights.some(w => w.categoryId === c.id));
     const weights: UserWeight[] = hasDefaults ? q.defaultWeights : equalWeights(q.categories);
-    setUserSession({ weights, weightMode: 'pie', answers: [] });
+    const answers: Answer[] = withDemo ? DEMO_ANSWERS : [];
+    setUserSession({ weights, weightMode: 'pie', answers });
     setUserStep(withDemo ? 1 : 0);
     setMode('user');
-    // Always save questionnaire to backend so scoring runs in Python
-    try {
-      const id = await createDecision(q);
-      setDecisionId(id);
-    } catch (err) {
-      console.error('Failed to register decision with backend:', err);
-      // Continue in offline mode — scoring will fall back to frontend
-    }
   }, [questionnaire]);
 
   const goEditWeights = useCallback(() => {
