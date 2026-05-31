@@ -16,7 +16,8 @@ Base = declarative_base()
 
 # ─── Tables ────────────────────────────────────────────────────────────────
 
-class Decision(Base):
+class DecisionModel(Base):
+    """Stores a published questionnaire."""
     __tablename__ = "decisions"
 
     id         = Column(Integer, primary_key=True, index=True)
@@ -25,7 +26,8 @@ class Decision(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-class Session(Base):
+class SessionModel(Base):
+    """Stores one user's answers + scoring result for a decision."""
     __tablename__ = "sessions"
 
     id          = Column(Integer, primary_key=True, index=True)

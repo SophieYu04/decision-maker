@@ -7,7 +7,7 @@ from typing import Optional, Union
 class Choice(BaseModel):
     id: str
     label: str
-    optionScores: dict[str, float]  # optionId → score 0–10
+    optionScores: dict[str, float]      # optionId → score 0–10
 
 
 class SliderMapping(BaseModel):
@@ -16,14 +16,14 @@ class SliderMapping(BaseModel):
     leftLabel: str
     rightLabel: str
     middleOptionId: Optional[str] = None
-    middleRange: Optional[list[float]] = None  # e.g. [4, 6]
+    middleRange: Optional[list[float]] = None   # e.g. [4, 6]
 
 
 class Question(BaseModel):
     id: str
     categoryId: str
     text: str
-    type: str  # 'multiple_choice' | 'slider'
+    type: str                           # 'multiple_choice' | 'slider'
     choices: list[Choice]
     sliderMapping: Optional[SliderMapping] = None
 
@@ -36,7 +36,8 @@ class Category(BaseModel):
     questions: list[Question]
 
 
-class QOption(BaseModel):
+class Option(BaseModel):
+    """One candidate option (e.g. a political party, a city, a product)."""
     id: str
     name: str
     color: str
@@ -45,14 +46,14 @@ class QOption(BaseModel):
 
 class UserWeight(BaseModel):
     categoryId: str
-    weight: float
+    weight: float                       # 0–100
 
 
 class Questionnaire(BaseModel):
     title: str
     description: str
     purpose: str
-    options: list[QOption]
+    options: list[Option]
     categories: list[Category]
     defaultWeights: list[UserWeight]
 
@@ -61,7 +62,7 @@ class Questionnaire(BaseModel):
 
 class Answer(BaseModel):
     questionId: str
-    value: Union[str, float]  # choiceId (MC) or 1–10 (slider)
+    value: Union[str, float]            # choiceId (MC) or 1–10 (slider)
 
 
 class CreateDecisionRequest(BaseModel):
@@ -104,7 +105,7 @@ class AnswerBreakdown(BaseModel):
 
 
 class OptionScore(BaseModel):
-    option: QOption
+    option: Option
     finalScore: float
     contributions: list[CategoryContribution]
     rank: int

@@ -10,26 +10,24 @@ from schemas import (
 def get_slider_scores(mapping: SliderMapping, value: float) -> dict[str, float]:
     """
     value 1–10:
-      left option  → scores 10 at value=1, 0 at value=10
-      right option → scores 0 at value=1, 10 at value=10
-      middle option (optional) → inverted-V curve, peaks at centre of middleRange
+      left option   → scores 10 at value=1, 0 at value=10
+      right option  → scores 0 at value=1, 10 at value=10
+      middle option → inverted-V curve, peaks at centre of middleRange
     """
-    t = (value - 1) / 9          # 0.0 → 1.0
+    t = (value - 1) / 9             # normalise to 0.0 → 1.0
     left_score  = round((1 - t) * 10, 2)
     right_score = round(t * 10, 2)
 
-    result: dict[str, float] = {}
-    result[mapping.leftOptionId] = left_score
+    result: dict[str, float] = {mapping.leftOptionId: left_score}
     if mapping.rightOptionId != mapping.leftOptionId:
         result[mapping.rightOptionId] = right_score
 
     if mapping.middleOptionId and mapping.middleRange:
-        lo, hi   = mapping.middleRange
-        mid      = (lo + hi) / 2
-        max_dist = max(mid - 1, 10 - mid)
-        dist     = abs(value - mid)
-        middle_score = round(max(0.0, (1 - dist / max_dist) * 10), 2)
-        result[mapping.middleOptionId] = middle_score
+        lo, hi    = mapping.middleRange
+        mid       = (lo + hi) / 2
+        max_dist  = max(mid - 1, 10 - mid)
+        dist      = abs(value - mid)
+        result[mapping.middleOptionId] = round(max(0.0, (1 - dist / max_dist) * 10), 2)
 
     return result
 
@@ -42,11 +40,9 @@ def get_question_option_scores(question: Question, answer: Answer) -> dict[str, 
         choice = next((c for c in question.choices if c.id == answer.value), None)
         return dict(choice.optionScores) if choice else {}
 
-    # Slider
-    raw_val = answer.value
-    value = float(raw_val) if not isinstance(raw_val, float) else raw_val
+    # Slider — answer.value is always float here (Union[str, float] from Pydantic)
     if question.sliderMapping:
-        return get_slider_scores(question.sliderMapping, value)
+        return get_slider_scores(question.sliderMapping, float(answer.value))
     return {}
 
 
@@ -58,19 +54,17 @@ def compute_scores(
     weights: list[UserWeight],
 ) -> ScoringResult:
     """
-    Mirrors computeScores() in QuestionnaireContext.tsx.
+    Weighted scoring across categories.
 
-    Steps:
-    1. Build answer_breakdowns: one entry per answered question
-       showing which options got how many points.
-    2. For each option, loop over categories:
-       - category score = average raw score across answered questions
-       - weighted score = (category_weight / 100) * avg_score
-    3. final_score = total_weighted / (total_used_weight / 100)
-    4. Sort options by final_score descending, assign ranks.
+    For each option:
+      1. Per category → avg_score = mean of answered questions' optionScores
+      2. weighted_score = (category_weight / 100) × avg_score
+      3. final_score = Σ weighted_score / (Σ used_weight / 100)
+         (normalises back to 0–10 scale even when some categories are skipped)
+      4. Sort by final_score descending, assign rank.
     """
 
-    # ── Step 1: answer breakdowns ──────────────────────────────────────────
+    # ── Step 1: build answer breakdowns ───────────────────────────────────
     answer_map = {a.questionId: a for a in answers}
 
     answer_breakdowns: list[AnswerBreakdown] = []
@@ -80,13 +74,11 @@ def compute_scores(
             if ans is None:
                 continue
 
-            # Human-readable label
             if question.type == "multiple_choice":
                 choice = next((c for c in question.choices if c.id == ans.value), None)
                 answer_label = choice.label if choice else str(ans.value)
             else:
-                val = float(ans.value)
-                answer_label = f"Slider → {val:.1f}/10"
+                answer_label = f"Slider → {float(ans.value):.1f}/10"
 
             answer_breakdowns.append(AnswerBreakdown(
                 questionId=question.id,
@@ -112,7 +104,7 @@ def compute_scores(
 
         for cat in questionnaire.categories:
             weight = weight_map.get(cat.id, 0.0)
-            if weight == 0 or len(cat.questions) == 0:
+            if weight == 0 or not cat.questions:
                 continue
 
             cat_total = 0.0
@@ -137,12 +129,12 @@ def compute_scores(
                 color=cat.color,
                 icon=cat.icon,
                 weight=weight,
-                avgScore=avg_score,
-                weightedScore=weighted_score,
-                shareOfTotal=0.0,  # filled in below
+                avgScore=round(avg_score, 4),
+                weightedScore=round(weighted_score, 4),
+                shareOfTotal=0.0,       # filled in below
             ))
 
-        # final score normalised back to 0–10 scale
+        # normalise final score back to 0–10
         final_score = (
             total_weighted_score / (total_used_weight / 100)
             if total_used_weight > 0 else 0.0
@@ -150,19 +142,19 @@ def compute_scores(
 
         # share of total for each category contribution
         for c in contributions:
-            c.shareOfTotal = (
-                (c.weightedScore / total_weighted_score) * 100
-                if total_weighted_score > 0 else 0.0
+            c.shareOfTotal = round(
+                (c.weightedScore / total_weighted_score * 100) if total_weighted_score > 0 else 0.0,
+                2,
             )
 
         raw_scores.append(OptionScore(
             option=opt,
-            finalScore=final_score,
+            finalScore=round(final_score, 4),
             contributions=contributions,
-            rank=0,  # assigned below
+            rank=0,     # assigned below
         ))
 
-    # ── Step 4: sort and rank ──────────────────────────────────────────────
+    # ── Step 4: sort and assign ranks ─────────────────────────────────────
     raw_scores.sort(key=lambda s: s.finalScore, reverse=True)
     for i, s in enumerate(raw_scores):
         s.rank = i + 1

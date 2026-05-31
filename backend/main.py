@@ -1,9 +1,11 @@
 import json
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session as DBSession
 
-from database import get_db, create_tables, Decision, Session
+from database import get_db, create_tables, DecisionModel, SessionModel
 from schemas import (
     CreateDecisionRequest, CreateDecisionResponse,
     SubmitRequest, SubmitResponse,
@@ -11,7 +13,16 @@ from schemas import (
 )
 from scoring import compute_scores
 
-app = FastAPI()
+
+# ─── Startup ───────────────────────────────────────────────────────────────
+# lifespan replaces the deprecated @app.on_event("startup")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_tables()
+    yield
+
+app = FastAPI(title="Decision Maker API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,25 +32,20 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-def startup():
-    create_tables()
+# ─── Health check ──────────────────────────────────────────────────────────
 
-
-@app.post("/admin/init-db")
-def init_db():
-    """Manually trigger table creation — call once if tables are missing."""
-    create_tables()
-    return {"status": "tables created"}
+@app.get("/")
+def health_check():
+    return {"status": "ok"}
 
 
 # ─── POST /decisions ───────────────────────────────────────────────────────
-# Front end calls this when a creator publishes a questionnaire.
+# Frontend calls this when a creator publishes a questionnaire.
 # Saves the full Questionnaire JSON and returns a decision_id.
 
 @app.post("/decisions", response_model=CreateDecisionResponse)
 def create_decision(body: CreateDecisionRequest, db: DBSession = Depends(get_db)):
-    decision = Decision(
+    decision = DecisionModel(
         name=body.name,
         data=body.data.model_dump_json(),
     )
@@ -49,36 +55,46 @@ def create_decision(body: CreateDecisionRequest, db: DBSession = Depends(get_db)
     return CreateDecisionResponse(decision_id=decision.id)
 
 
+# ─── GET /decisions ────────────────────────────────────────────────────────
+# Returns a list of all saved decisions (id + name).
+
+@app.get("/decisions")
+def list_decisions(db: DBSession = Depends(get_db)):
+    decisions = db.query(DecisionModel).all()
+    return [{"id": d.id, "name": d.name} for d in decisions]
+
+
 # ─── GET /decisions/{decision_id} ─────────────────────────────────────────
-# Front end calls this when a user opens a shared link (?decision_id=42).
+# Frontend calls this when a user opens a shared link (?decision_id=42).
 # Returns the Questionnaire JSON.
 
 @app.get("/decisions/{decision_id}")
 def get_decision(decision_id: int, db: DBSession = Depends(get_db)):
-    decision = db.query(Decision).filter(Decision.id == decision_id).first()
+    decision = db.query(DecisionModel).filter(DecisionModel.id == decision_id).first()
     if not decision:
         raise HTTPException(status_code=404, detail="Decision not found")
     return {"data": json.loads(decision.data)}
 
 
 # ─── POST /submit ──────────────────────────────────────────────────────────
-# Front end calls this when a user finishes answering.
-# Runs compute_scores() in Python, saves the result, returns it.
+# Frontend calls this when a user finishes answering.
+# Runs compute_scores() in Python, saves the session, returns the result.
 
 @app.post("/submit", response_model=SubmitResponse)
 def submit_answers(body: SubmitRequest, db: DBSession = Depends(get_db)):
-    # Load questionnaire
-    decision = db.query(Decision).filter(Decision.id == body.decision_id).first()
+    decision = db.query(DecisionModel).filter(DecisionModel.id == body.decision_id).first()
     if not decision:
         raise HTTPException(status_code=404, detail="Decision not found")
 
     questionnaire = Questionnaire(**json.loads(decision.data))
 
-    # ── Run scoring logic (Python) ──
+    # ── Run scoring logic ──────────────────────────────────────────────────
+    # compute_scores() is the single source of truth for all scoring.
+    # It lives in scoring.py and is shared with nothing else.
     result = compute_scores(questionnaire, body.answers, body.weights)
 
-    # Save session
-    session = Session(
+    # ── Persist session ────────────────────────────────────────────────────
+    session = SessionModel(
         decision_id=body.decision_id,
         answers=json.dumps([a.model_dump() for a in body.answers]),
         weights=json.dumps([w.model_dump() for w in body.weights]),
@@ -89,3 +105,17 @@ def submit_answers(body: SubmitRequest, db: DBSession = Depends(get_db)):
     db.refresh(session)
 
     return SubmitResponse(session_id=session.id, result=result)
+
+
+# ─── GET /sessions/{session_id} ───────────────────────────────────────────
+# Retrieve a previously saved session result by id.
+
+@app.get("/sessions/{session_id}", response_model=SubmitResponse)
+def get_session(session_id: int, db: DBSession = Depends(get_db)):
+    session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return SubmitResponse(
+        session_id=session.id,
+        result=json.loads(session.result),
+    )
