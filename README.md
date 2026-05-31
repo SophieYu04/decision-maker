@@ -104,4 +104,4 @@ VITE_API_URL=http://localhost:8000
 
 ## Test Data
 
-Election bulletin questionnaire data contributed by 黃旭辰.
+Election bulletin questionnaire data (https://bulletin.cec.gov.tw/01選舉公報/01總統副總統/113年第16任總統副總統.pdf) collected by 黃旭辰.
