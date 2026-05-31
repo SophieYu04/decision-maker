@@ -11,7 +11,6 @@ import {
   Answer,
 } from '../../context/QuestionnaireContext';
 import { UserStepDots } from './UserWeightScreen';
-import { submitAnswers } from '../../api';
 
 // ─── Multiple-choice question ──────────────────────────────────────────────
 function MultiChoiceQuestion({
@@ -145,7 +144,7 @@ function SliderQuestion({
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export function UserAnswerScreen() {
-  const { questionnaire, userSession, setAnswer, nextUserStep, prevUserStep, decisionId, setScoringResult } = useQuestionnaire();
+  const { questionnaire, userSession, setAnswer, nextUserStep, prevUserStep, setScoringResult } = useQuestionnaire();
   const [expandedCat, setExpandedCat] = useState<string | null>(questionnaire.categories[0]?.id ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -162,25 +161,10 @@ export function UserAnswerScreen() {
     setAnswer({ questionId, value });
   }, [setAnswer]);
 
-  const handleSubmit = async () => {
-    if (decisionId) {
-      setIsSubmitting(true);
-      try {
-        const res = await submitAnswers(decisionId, userSession.answers, userSession.weights);
-        setScoringResult(res.result);
-        nextUserStep();
-      } catch (err) {
-        console.error(err);
-        alert('Failed to calculate results. Please check your connection.');
-      } finally {
-        setIsSubmitting(false);
-      }
-    } else {
-      // Fallback: compute scores locally (demo mode or backend unavailable)
-      const localResult = computeScores(questionnaire, userSession);
-      setScoringResult(localResult);
-      nextUserStep();
-    }
+  const handleSubmit = () => {
+    const localResult = computeScores(questionnaire, userSession);
+    setScoringResult(localResult);
+    nextUserStep();
   };
 
   return (
