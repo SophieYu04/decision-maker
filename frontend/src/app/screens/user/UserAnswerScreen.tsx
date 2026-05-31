@@ -4,13 +4,14 @@ import { ArrowLeft, CheckCircle2, SlidersHorizontal, ChevronRight } from 'lucide
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import {
   useQuestionnaire,
-  computeScores,
   getTotalAnswered,
   getTotalQuestions,
   Question,
   Answer,
+  computeScores,
 } from '../../context/QuestionnaireContext';
 import { UserStepDots } from './UserWeightScreen';
+import { submitAnswers } from '../../api';
 
 // ─── Multiple-choice question ──────────────────────────────────────────────
 function MultiChoiceQuestion({
@@ -144,7 +145,7 @@ function SliderQuestion({
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export function UserAnswerScreen() {
-  const { questionnaire, userSession, setAnswer, nextUserStep, prevUserStep, setScoringResult } = useQuestionnaire();
+  const { questionnaire, userSession, setAnswer, nextUserStep, prevUserStep, decisionId, setScoringResult } = useQuestionnaire();
   const [expandedCat, setExpandedCat] = useState<string | null>(questionnaire.categories[0]?.id ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -161,10 +162,25 @@ export function UserAnswerScreen() {
     setAnswer({ questionId, value });
   }, [setAnswer]);
 
-  const handleSubmit = () => {
-    const localResult = computeScores(questionnaire, userSession);
-    setScoringResult(localResult);
-    nextUserStep();
+  const handleSubmit = async () => {
+    if (decisionId) {
+      setIsSubmitting(true);
+      try {
+        const res = await submitAnswers(decisionId, userSession.answers, userSession.weights);
+        setScoringResult(res.result);
+        nextUserStep();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to calculate results on server.');
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // Demo mode fallback
+      const localResult = computeScores(questionnaire, userSession);
+      setScoringResult(localResult);
+      nextUserStep();
+    }
   };
 
   return (
