@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
@@ -31,7 +31,7 @@ class SessionModel(Base):
     __tablename__ = "sessions"
 
     id          = Column(Integer, primary_key=True, index=True)
-    decision_id = Column(Integer, nullable=False)
+    decision_id = Column(Integer, ForeignKey("decisions.id"), nullable=False)
     answers     = Column(Text, nullable=False)   # answers JSON
     weights     = Column(Text, nullable=False)   # weights JSON
     result      = Column(Text, nullable=False)   # ScoringResult JSON
